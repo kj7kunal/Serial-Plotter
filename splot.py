@@ -1,7 +1,5 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sat Dec 24 20:38:39 2016
-
 @author: Kunal
 """
 import serial
@@ -11,8 +9,8 @@ import matplotlib.animation as animation
 import time
 
 x=range(0,50)
-y = [0] * 50
-
+y = [[0]*50 for _ in range(2)]	#because list is mutable 
+yval = [0, 0]
 
 ser = serial.Serial('/dev/ttyACM0', 9600)
 ser.close()
@@ -25,31 +23,40 @@ ax.set_title('Pitch vs time')
 ax.grid(True)
 ax.set_ylabel('Pitch')
 ax.set_xlabel('time')
-plt.ylim([np.min(y)-10,np.max(y)+10])
-line, = plt.plot(y)
+lines=[]
+clr = ["red","cyan"]
+for index in range(2):
+    lobj = ax.plot([],[],lw=2,color=clr[index])[0]
+    lines.append(lobj)
+def init():
+    for line in lines:
+        line.set_data([],[])
+    return lines
 
 
 def update(i):
+    del x[0]    
     x.append(x[len(x)-1]+1)
-    y.append(int(ser.readline()))
-    del y[0]
-    del x[0]
+    dataline = ser.readline()
+    time.sleep(0.05)
+    yval = [int(s) for s in dataline.split(' ')]
+    
+    for j in range(2):
+        del y[j][0]
+        y[j].append(yval[j])
+        lines[j].set_data(x,y[j])
+
+    print yval, y
+
     plt.ylim([np.min(y)-10,np.max(y)+10])
     plt.xlim([x[0],x[len(x)-1]])
-    line.set_xdata(x)
-    line.set_ydata(y)
     plt.draw()
     time.sleep(0.05)
-    
-    
-    
-plt.ion()
 
+    return lines,
 
-            
 try:
-    data = ser.readline()
-    anim = animation.FuncAnimation(fig, update,interval=10)
+    anim = animation.FuncAnimation(fig,update,init_func=init,interval=50)
     # show plot
     plt.show() 
 except ValueError:
